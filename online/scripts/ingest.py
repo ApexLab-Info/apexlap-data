@@ -72,10 +72,13 @@ def profile(issue):
         if k in ids and isinstance(v, (int, float)) and 5000 <= v <= 3600000: bests[k] = int(v)
     name = clean(o.get("name", login), 30) or login
     jsave(P("profiles", login + ".json"), {"name": name, "bests": bests})
+    idx = [e for e in jload(P("profiles", "index.json"), []) if e.get("user") != login]
+    idx.append({"user": login, "name": name})
+    jsave(P("profiles", "index.json"), idx)
     for cid in bests:   # rebuild ranking from every profile
         rows = []
         d = P("profiles")
-        for fn in os.listdir(d):
+        for fn in [x for x in os.listdir(d) if x != "index.json"]:
             pr = jload(os.path.join(d, fn), {})
             if cid in pr.get("bests", {}): rows.append({"user": fn[:-5], "name": pr.get("name", ""), "ms": pr["bests"][cid]})
         rows.sort(key=lambda r: r["ms"])
