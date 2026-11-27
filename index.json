@@ -1,1 +1,1 @@
-[{"id":"c-ociokart-3","name":"OcioKart","lat":43.204131,"lon":-3.09638,"sectors":2,"stage":false,"file":"circuits/c-ociokart-3.json","by":"iron-716","official":true}]
+[{"id":"c-ociokart-3","name":"OcioKart","lat":43.204131,"lon":-3.09638,"sectors":2,"stage":false,"file":"circuits/c-ociokart-3.json","by":"iron-716","official":true},{"id":"c-demo","name":"Demo (simulador)","lat":40.4168,"lon":-3.702028,"sectors":3,"stage":false,"file":"circuits/c-demo.json","by":"ApexLab-Info","official":true}]
