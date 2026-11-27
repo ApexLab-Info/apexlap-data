@@ -42,6 +42,18 @@ def gate(g):
 
 def clean(s, n): return re.sub(r"[\x00-\x1f<>`]", "", str(s)).strip()[:n]
 def user_ok(u): return bool(re.fullmatch(r"[A-Za-z0-9-]{1,39}", u or ""))
+DEMO = json.loads('{"id": "c-demo", "name": "Demo (simulador)", "directional": true, "finish": {"a": [40.4168, -3.7019455], "b": [40.4168, -3.7021109]}, "sectors": [{"a": [40.4160176, -3.7038], "b": [40.4161435, -3.7038]}, {"a": [40.4168, -3.7056545], "b": [40.4168, -3.7054891]}, {"a": [40.4175824, -3.7038], "b": [40.4174565, -3.7038]}]}')
+
+def ensure_demo():
+    """The official Demo circuit (matches the in-app simulator) is always present."""
+    index = jload(P("index.json"), [])
+    if any(e["id"] == "c-demo" for e in index): return
+    jsave(P("circuits", "c-demo.json"), DEMO)
+    f = DEMO["finish"]
+    index.append({"id": "c-demo", "name": DEMO["name"], "lat": round((f["a"][0] + f["b"][0]) / 2, 6), "lon": round((f["a"][1] + f["b"][1]) / 2, 6),
+                  "sectors": 3, "stage": False, "file": "circuits/c-demo.json", "by": os.environ.get("REPO_OWNER", ""), "official": True})
+    jsave(P("index.json"), index)
+
 def tail(title): return title.split(":", 1)[1].strip()
 
 def circuit(issue):
@@ -75,6 +87,24 @@ def circuit(issue):
                   "stage": bool(o.get("end")), "file": f"circuits/{cid}.json", "by": by, "official": False})
     jsave(P("index.json"), index)
     return f"Circuito publicado como `{cid}`."
+
+def circuit_delete(issue):
+    by = issue["user"]["login"]; cid = tail(issue["title"])
+    if cid == "c-demo": raise ValueError("el circuito Demo no se puede eliminar")
+    index = jload(P("index.json"), [])
+    e = next((x for x in index if x["id"] == cid), None)
+    if not e: raise ValueError("circuito no encontrado")
+    if e.get("by", "").lower() != by.lower(): raise ValueError("solo el autor puede eliminarlo")
+    jsave(P("index.json"), [x for x in index if x["id"] != cid])
+    for path in (P("circuits", cid + ".json"), P("rankings", cid + ".json")):
+        if os.path.exists(path): os.remove(path)
+    d = P("profiles")
+    if os.path.isdir(d):
+        for fn in [x for x in os.listdir(d) if x != "index.json"]:
+            pr = jload(os.path.join(d, fn), {})
+            if cid in pr.get("bests", {}):
+                del pr["bests"][cid]; jsave(os.path.join(d, fn), pr)
+    return f"«{e['name']}» eliminado de la comunidad."
 
 def official_request(issue):
     by = issue["user"]["login"]; cid = tail(issue["title"])
@@ -168,8 +198,9 @@ def main():
     labels = {l["name"] for l in issue.get("labels", [])}
     kind = title.split(":", 1)[0].strip()
     try:
+        ensure_demo()
         if action == "opened":
-            fn = {"Circuito": circuit, "Perfil": profile, "Amistad": friend_request, "Amistad-aceptar": friend_accept,
+            fn = {"Circuito": circuit, "Circuito-eliminar": circuit_delete, "Perfil": profile, "Amistad": friend_request, "Amistad-aceptar": friend_accept,
                   "Amistad-rechazar": friend_reject, "Amistad-quitar": friend_remove, "Oficial": official_request}.get(kind)
             if not fn: return
             res = fn(issue)
